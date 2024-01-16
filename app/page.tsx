@@ -20,47 +20,98 @@ import {
   useMemo,
   useState,
 } from "react";
+// extract later
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { toast } from "@/components/ui/use-toast";
 
 export default function Home() {
   const pathname = usePathname();
   const [segment, setSegment] = useState("");
+  const [tasks, setTasks] = useState([]);
+  const [selectedTask, setSelectedTask] = useState('');
   const segments = pathname.split("/");
+
   useEffect(() => {
-    if (segments[4]) {
-      setSegment(segments[4]);
-      localStorage.setItem("location-id", segment);
-      console.log("segment: ", segment);
+    triggerMake();
+  }, [])
+  
+  const triggerMake = async () => {
+    const url = "https://hook.us1.make.com/yib6erf57tjxwmnv4wxpd2d34iqy6xli";
+    const req = {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    };
+    const res = await fetch(url);
+    if (res.ok) {
+      const tasks = await res.json();
+      setTasks(tasks);
+    } else {
+      console.log("An error occurred while fetching");
     }
-  }, []);
+  };
 
   const formSchema = z.object({
+    taskId: z
+      .string(),
     message: z
       .string()
       .min(1, "Message cannot be empty.")
       .max(255, "Message cannot be more than 255 characters.")
       .trim(),
-  });
+  });handleChange
   const form = useForm<z.infer<typeof formSchema>>({
     mode: "onChange",
     defaultValues: {
+      taskId: "",
       message: "",
     },
   });
 
+  function handleChange(value: string) {
+    setSelectedTask(value);
+  }
+
+  
   function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log(values);
-    console.log("segment: ", segment);
+      values.taskId = selectedTask;
   }
 
   return (
     <main className="items-center p-24">
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
+          <FormField render={({ field }) => (
+            <FormItem>
+              <FormLabel>Task</FormLabel>
+              <Select name="taskId" onValueChange={handleChange} required>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select an item to send a message to." />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {tasks.map((task: { taskId: string; title: string; description: string; }) => (
+                    <SelectItem key={task.taskId} value={task.taskId}><strong>{task.title}</strong>{task.description}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FormItem>
+
+          )} name={""}>
+          </FormField>
           <FormField
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Message</FormLabel>
-                <FormControl>
+                <FormControl hidden={tasks.length>0}>
                   <Tiptap
                     message={field.value}
                     onChange={field.onChange}
